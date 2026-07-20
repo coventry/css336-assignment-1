@@ -12,12 +12,12 @@ from typing import TextIO
 EOT_TOKEN = "<|endoftext|>"
 TEXT_PRETOKENIZER = regex.compile(
     r"""
-      '(?:[sdmt]|ll|ve|re)          # contractions: 's, 'd, 'm, 't, 'll, 've, 're
-    | [ ]?\p{L}+                    # optional leading space + letters
-    | [ ]?\p{N}+                    # optional leading space + numbers
-    | [ ]?[^\s\p{L}\p{N}]+          # optional leading space + punctuation/symbols/etc.
-    | \s+(?!\S)                     # whitespace not followed by non-whitespace
-    | \s+                           # remaining whitespace
+      '(?:[sdmt]|ll|ve|re)  # contractions: 's, 'd, 'm, 't, 'll, 've, 're
+    | [ ]?\p{L}+            # optional leading space + letters
+    | [ ]?\p{N}+            # optional leading space + numbers
+    | [ ]?[^\s\p{L}\p{N}]+  # optional leading space + punctuation/symbols/etc.
+    | \s+(?!\S)             # whitespace not followed by non-whitespace
+    | \s+                   # remaining whitespace
       """,
     regex.VERBOSE,
 )
