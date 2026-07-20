@@ -136,8 +136,13 @@ def shard_worker(args: tuple[Path, list[str]]) -> Counter[str]:
 
 def get_pretoken_counts(
     input_path: str,
-    special_tokens: list[str] = [EOT_TOKEN],
+    special_tokens: list[str] | None = None,
 ) -> Counter[str]:
+    special_tokens = (
+        special_tokens if special_tokens is not None else [EOT_TOKEN]
+    )
+    if EOT_TOKEN not in special_tokens:
+        raise ValueError(f"{EOT_TOKEN} is hard-coded as text-separator.")
     output_dir = Path(mkdtemp())
     try:
         shard_paths = shard_stories(
