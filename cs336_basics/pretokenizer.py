@@ -112,7 +112,7 @@ def shard_stories(
     num_stories = sum(1 for _ in iter_file_split(data_file, eot_token)) - 1
     num_stories = max(num_stories, 1)  # Test data file has no EOT token
     stories_per_worker = math.ceil(num_stories / num_workers)
-    output: TextIO = open("/dev/null")  # Dummy fileobj; fails on write
+    output: TextIO = open("/dev/null")  # Read-only fileobj; write will fail
     shard_paths: list[Path] = []
     for story_idx, story in enumerate(iter_file_split(data_file, eot_token)):
         if story_idx % stories_per_worker == 0:  # Moving to a new shard
