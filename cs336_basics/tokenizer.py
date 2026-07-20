@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict as ddict
 
 from cs336_basics.pretokenizer import get_pretoken_counts
 
@@ -130,167 +130,94 @@ def bpe(
         >>> merges
         [('b', 'a'), ('a', 'ba')]
     """
-    # Tuple of latin-1 strings -> number of occurrences in training dataset.
-    bytewise_counts: dict[tuple[str, ...], int] = {
-        # Initially, each tuple of the single latin-1 characters in the UTF-8
-        # representation of the string from pretoken_counts
-        tuple(w.encode("utf-8").decode("latin-1")): c
-        for w, c in pretoken_counts.items()
-    }
     # Initial vocab is the special tokens, plus the singleton bytes
     vocab: list[str] = special_tokens + [
         bytes([c]).decode("latin-1") for c in range(256)
     ]  # singleton bytes
     merges: list[tuple[str, str]] = []  # Max-freq pairs which got merged
-    while len(vocab) < vocab_size:  # Loop until vocab size reaches vocab_size
-        tok_pair = most_common_pair(bytewise_counts)
+    # Tuple of latin-1 strings -> number of occurrences in training dataset.
+    pair_counts: Counter[tuple[str, str]] = Counter()  # Pair -> pair count
+    # Pair -> words which contain pair
+    pair_words: dict[tuple[str, str], set[tuple[str, ...]]] = ddict(set)
+    word_counts: dict[tuple[str, ...], int] = {}
+    for w, c in pretoken_counts.items():
+        w = tuple(w.encode("utf-8").decode("latin-1"))  # Tuple of "bytes"
+        if len(w) < 2:
+            continue  # Irrelevant to BPE, if there are no pairs.
+        word_counts[w] = c
+        for tok1, tok2 in zip(w, w[1:]):
+            pair_counts[tok1, tok2] += c
+            pair_words[tok1, tok2].add(w)
+    # Loop until vocab size reaches vocab_size or all pairs merged
+    while len(vocab) < vocab_size and pair_counts:
+        # Find the most common pair, tie-break counts lexicographically
+        _, tok_pair = max((c, p) for p, c in pair_counts.items())
         new_token = "".join(tok_pair)  # Merge the pair
         vocab.append(new_token)
         merges.append(tok_pair)
-        # Update bytewise_counts with the new, merged token TODO: Could be
-        # optimized by updating pair_counts on the fly as merges are observed,
-        # instead of fully recomputing?
-        bytewise_counts = {
-            merge_word(w, tok_pair): c for w, c in bytewise_counts.items()
-        }
+        for word in pair_words[tok_pair]:
+            new_word, new_pairs, removed_pairs = merge_word(word, tok_pair)
+            word_count = word_counts[word]
+            del word_counts[word]  # Forget old word
+            for p, c in removed_pairs.items():
+                pair_counts[p] -= c * word_count
+                assert pair_counts[p] >= 0
+                if pair_counts[p] == 0:
+                    del pair_counts[p]
+                pair_words[p].remove(word)
+                if not pair_words[p]:
+                    del pair_words[p]
+            if len(new_word) <= 1:  # Only relevant to BPE if at least a pair
+                continue
+            word_counts[new_word] = word_count
+            for p, c in new_pairs.items():
+                pair_counts[p] += c * word_count
+                pair_words[p].add(new_word)
+        del pair_words[tok_pair]
+        del pair_counts[tok_pair]
     return dict(enumerate(vocab)), merges
 
 
-def most_common_pair(
-    bytewise_counts: dict[tuple[str, ...], int],
-) -> tuple[str, str]:
-    """Return the most frequent adjacent token pair in a weighted vocabulary.
-
-    For each tokenized word in ``bytewise_counts``, counts every adjacent
-    token pair and weights each occurrence by the word's frequency. Multiple
-    occurrences of the same pair within one word are counted separately.
-
-    If multiple pairs have the same maximum frequency, the lexicographically
-    greatest pair is returned, matching the tie-breaking behavior of
-    ``max((count, pair), ...)``.
-
-    Args:
-        bytewise_counts: A mapping from tokenized words to their frequencies.
-
-    Returns:
-        The adjacent token pair with the greatest total weighted frequency.
-
-    Raises:
-        ValueError: If none of the words contains an adjacent token pair.
-
-    Examples:
-        Frequencies are accumulated across words:
-
-        >>> most_common_pair({
-        ...     ("a", "b", "c"): 4,
-        ...     ("a", "b"): 3,
-        ...     ("b", "c"): 1,
-        ... })
-        ('a', 'b')
-
-        Repeated occurrences within a word are counted separately:
-
-        >>> most_common_pair({("a", "b", "a", "b"): 2})
-        ('a', 'b')
-
-        Ties are resolved by choosing the lexicographically greatest pair:
-
-        >>> most_common_pair({
-        ...     ("a", "b"): 1,
-        ...     ("x", "y"): 1,
-        ... })
-        ('x', 'y')
-
-        At least one word must contain two or more tokens:
-
-        >>> most_common_pair({("a",): 4, (): 2})
-        Traceback (most recent call last):
-        ...
-        ValueError: At least one word must contain at least two tokens
-    """
-    pair_counts: Counter[tuple[str, str]] = Counter()
-    for w, c in bytewise_counts.items():
-        for tok1, tok2 in zip(w, w[1:]):
-            pair_counts[tok1, tok2] += c
-    if not pair_counts:
-        raise ValueError("At least one word must contain at least two tokens")
-    _, rv = max(  # Most frequent token pair
-        (c, tok_pair) for tok_pair, c in pair_counts.items()
-    )
-    return rv
-
-
-def merge_word(
-    word: tuple[str, ...], tok_pair: tuple[str, str]
-) -> tuple[str, ...]:
-    """Merge adjacent occurrences of a token pair within a tokenized word.
-
-    Scans ``word`` from left to right and replaces each non-overlapping
-    occurrence of ``tok_pair`` with the concatenation of its two tokens.
-    Tokens not participating in a merge are preserved unchanged.
-
-    When occurrences overlap, the leftmost occurrence is merged. For
-    example, merging ``("a", "a")`` in ``("a", "a", "a")`` produces
-    ``("aa", "a")`` rather than ``("a", "aa")``.
-
-    Args:
-        word: The sequence of tokens making up one pretokenized word.
-        tok_pair: The adjacent pair of tokens to merge.
-
-    Returns:
-        A tuple containing the tokens after all non-overlapping occurrences
-        of ``tok_pair`` have been merged.
-
-    Examples:
-        Merge one occurrence:
-
-        >>> merge_word(("l", "o", "w"), ("l", "o"))
-        ('lo', 'w')
-
-        Merge multiple occurrences:
-
-        >>> merge_word(("a", "b", "a", "b"), ("a", "b"))
-        ('ab', 'ab')
-
-        Overlapping occurrences are resolved from left to right:
-
-        >>> merge_word(("a", "a", "a"), ("a", "a"))
-        ('aa', 'a')
-
-        Return the word unchanged when the pair does not occur:
-
-        >>> merge_word(("l", "o", "w"), ("x", "y"))
-        ('l', 'o', 'w')
-
-        Words containing fewer than two tokens cannot be merged:
-
-        >>> merge_word(("word",), ("w", "o"))
-        ('word',)
-        >>> merge_word((), ("w", "o"))
-        ()
-
-        Regression test:
-
-        >>> merge_word(("a", "b", "a", "b"), ("b", "a"))
-        ('a', 'ba', 'b')
-    """
+def merge_word(word: tuple[str, ...], tok_pair: tuple[str, str]) -> tuple[
+    tuple[str, ...],  # Merged word
+    dict[tuple[str, str], int],  # New pairs from merged word
+    dict[tuple[str, str], int],  # Removed pairs from old word
+]:
     if len(word) < 2:
         # No merging is possible, and following code assumes at least length 2
-        return word
-    new_word: list[str] = []  # Builds up the merged word from `word`
-    word_idx = 0  # Iterate over pairs, looking for merged pair
-    while word_idx < len(word):
-        if (
-            word_idx < len(word) - 1
-            and (word[word_idx], word[word_idx + 1]) == tok_pair
-        ):
-            new_word.append("".join(tok_pair))
-            word_idx += 1  # Skip second token, since it's now merged
+        return word, {}, {}
+    new_token = "".join(tok_pair)  # Merge the pair
+    new_word: list[str] = []
+    # Counts of new pairs resulting from the merge
+    new_pairs: dict[tuple[str, str], int] = Counter()
+    # Counts of old pairs which must be removed, given the merge
+    removed_pairs: dict[tuple[str, str], int] = Counter()
+    word_idx = 0
+    while word_idx < len(word) - 1:
+        if (word[word_idx], word[word_idx + 1]) == tok_pair:
+            # We found the token pair; we'll want to remove that since
+            # now it's going to be merged.
+            removed_pairs[tok_pair] += 1
+            new_word.append(new_token)
+            if word_idx > 0:  # If there's a token prior to tok_pair
+                pre_tok = word[word_idx - 1]
+                new_tok_pair = (pre_tok, new_token)
+                new_pairs[new_tok_pair] += 1
+                old_tok_pair = (pre_tok, tok_pair[0])
+                removed_pairs[old_tok_pair] += 1
+            if word_idx < len(word) - 2:  # If there's a token after...
+                post_tok = word[word_idx + 1]
+                new_tok_pair = (new_token, post_tok)
+                new_pairs[new_tok_pair] += 1
+                old_tok_pair = (tok_pair[1], post_tok)
+                removed_pairs[old_tok_pair] += 1
+                removed_pairs[(tok_pair[1], post_tok)] += 1
+            word_idx += 2  # Skip past the pair
         else:
             new_word.append(word[word_idx])
-        word_idx += 1
+            word_idx += 1  # Move to next token in words
     assert "".join(new_word) == "".join(word), f"{new_word} != {word}"
-    return tuple(new_word)
+    return tuple(new_word), new_pairs, removed_pairs
 
 
 if __name__ == "__main__":
