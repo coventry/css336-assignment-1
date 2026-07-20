@@ -110,6 +110,7 @@ def shard_stories(
     """
     os.makedirs(shard_dir, exist_ok=True)
     num_stories = sum(1 for _ in iter_file_split(data_file, eot_token)) - 1
+    num_stories = max(num_stories, 1)  # Test data file has no EOT token
     stories_per_worker = math.ceil(num_stories / num_workers)
     output: TextIO = open("/dev/null")  # Dummy fileobj; fails on write
     shard_paths: list[Path] = []
