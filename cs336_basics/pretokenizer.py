@@ -1,5 +1,6 @@
 from collections import Counter
 from collections.abc import Iterator
+from itertools import batched
 import math
 import multiprocessing as mp
 import os
@@ -115,6 +116,8 @@ def shard_stories(
     output: TextIO = open("/dev/null")  # Read-only fileobj; write will fail
     shard_paths: list[Path] = []
     for story_idx, story in enumerate(iter_file_split(data_file, eot_token)):
+        if story_idx % 100_000 == 0:
+            print("sharding, now at story", story_idx)
         if story_idx % stories_per_worker == 0:  # Moving to a new shard
             new_fn = f"{shard_fn_prefix}-{story_idx // stories_per_worker}.txt"
             new_path = shard_dir / new_fn
@@ -126,12 +129,15 @@ def shard_stories(
     return shard_paths
 
 
-def shard_worker(args: tuple[Path, list[str]]) -> Counter[str]:
-    shard_path, special_tokens = args
-    return pretokenize_chunk(
-        shard_path.read_text(encoding="utf-8"),
-        special_tokens,
-    )
+def shard_worker(args: tuple[Path, str, list[str]]) -> Counter[str]:
+    shard_path, eot_token, special_tokens = args
+    aggregate_counter = Counter()
+    for stories in batched(iter_file_split(shard_path, eot_token), 10_000):
+        aggregate_counter += pretokenize_chunk(
+            eot_token.join(stories),
+            special_tokens,
+        )
+    return aggregate_counter
 
 
 def get_pretoken_counts(
@@ -150,7 +156,7 @@ def get_pretoken_counts(
         )
         aggregate_counter = Counter()
         with mp.Pool(processes=len(shard_paths)) as pool:
-            tasks = [(p, special_tokens) for p in shard_paths]
+            tasks = [(p, EOT_TOKEN, special_tokens) for p in shard_paths]
             for counts in pool.imap_unordered(shard_worker, tasks):
                 aggregate_counter.update(counts)
     finally:
