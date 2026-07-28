@@ -1,6 +1,6 @@
 from collections import Counter
 from collections.abc import Iterator
-from itertools import batched
+from itertools import batched, chain
 import math
 import multiprocessing as mp
 import os
@@ -22,6 +22,46 @@ TEXT_PRETOKENIZER = regex.compile(
       """,
     regex.VERBOSE,
 )
+
+
+def special_token_split(
+    data: str, special_tokens: list[str], include_special_tokens=False
+) -> list[str]:
+    "Split on special tokens, in longest to shortest order."
+    splits = [data]
+    # Split on longer special tokens first, in case any shorter ones are
+    # substrings of longer ones.
+    processed_tokens = set()
+    for tok in sorted(special_tokens, key=len, reverse=True):
+        new_splits = []
+        for s in splits:
+            if s in processed_tokens:
+                new_splits.append(s)
+                continue
+            ns = s.split(tok)
+            if include_special_tokens:
+                # [seg1, tok, seg2, tok, ..., segn]. [:-1] removes last tok.
+                ns = list(chain(*((seg, tok) for seg in ns)))[:-1]
+                assert "".join(ns) == s, f"''.join({ns}) != {s!r})"
+            new_splits.extend(ns)
+        splits = new_splits
+        processed_tokens.add(tok)
+    if include_special_tokens:
+        assert "".join(splits) == data, f"''.join({splits}) != {data!r})"
+    return splits
+
+
+def pretokenizer_split(
+    data: str, special_tokens: list[str], include_special_tokens=False
+) -> Iterator[str]:
+    "Split on special tokens, then the pretokenizer regexp."
+    st = set(special_tokens)
+    segments = special_token_split(data, special_tokens, include_special_tokens)
+    for seg in segments:
+        if seg in st:
+            yield seg
+        else:
+            yield from (w.group() for w in TEXT_PRETOKENIZER.finditer(seg))
 
 
 def pretokenize_chunk(
@@ -47,21 +87,7 @@ def pretokenize_chunk(
       "next": 1
     }
     """
-    counts = Counter()
-    splits = [data]
-    # Split on longer special tokens first, in case any shorter ones are
-    # substrings of longer ones.
-    longer_to_shorter = sorted(special_tokens, key=len, reverse=True)
-    for tok in longer_to_shorter:
-        new_splits = []
-        for s in splits:
-            ns = s.split(tok)
-            new_splits.extend(ns)
-        splits = new_splits
-    for s in splits:  # Now count the words in those splits
-        for word in TEXT_PRETOKENIZER.finditer(s):
-            counts[word.group()] += 1
-    return counts
+    return Counter(pretokenizer_split(data, special_tokens))
 
 
 def iter_file_split(
