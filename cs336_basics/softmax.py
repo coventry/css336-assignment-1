@@ -1,0 +1,19 @@
+"""Implementation of Softmax function.
+
+Response to problem `softmax` of Assignment 1.
+"""
+
+from torch import Tensor
+
+from jaxtyping import Float
+
+
+def softmax(
+    in_features: Float[Tensor, " ..."], dim: int
+) -> Float[Tensor, " ..."]:
+    "Return softmax value from eq. (10)"
+    # keepdim=True to broadcast the max-contracted dimension over in_features
+    normalized = in_features - in_features.max(dim=dim, keepdim=True)[0]
+    numerators = normalized.exp()
+    denom = numerators.sum(dim=dim, keepdim=True)
+    return numerators / denom
