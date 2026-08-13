@@ -342,7 +342,7 @@ def run_transformer_block(
         dtype=in_features.dtype,
     )
     attn_projections = torch.concat(
-        tuple(weights.get(f"attn.{p}_proj.weight", Tensor()) for p in "qkv"),
+        tuple(weights[f"attn.{p}_proj.weight"] for p in "qkv"),
         dim=0,
     )
     t.load_state_dict(
