@@ -50,7 +50,7 @@ class Linear(nn.Module):
     def forward(
         self, inp: Float[Tensor, "*batch in_features"]
     ) -> Float[Tensor, "*batch out_features"]:
-        """Multiply `inp` by self.params, on the left."""
+        """Multiply `inp` by self.weight, on the left."""
         return einx.dot(  # pyright: ignore[reportPrivateImportUsage]
             "out_features [in_features], ... [in_features] -> ... out_features",
             self.weight,
