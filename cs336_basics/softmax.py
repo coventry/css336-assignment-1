@@ -13,7 +13,7 @@ def softmax(
 ) -> Float[Tensor, "..."]:
     "Return softmax value from eq. (10)"
     # keepdim=True to broadcast the max-contracted dimension over in_features
-    normalized = in_features - in_features.max(dim=dim, keepdim=True)[0]
+    normalized = in_features - in_features.amax(dim=dim, keepdim=True)
     numerators = normalized.exp()
     denom = numerators.sum(dim=dim, keepdim=True)
     return numerators / denom
