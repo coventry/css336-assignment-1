@@ -56,6 +56,7 @@ class RoPE(nn.Module):
                 ),
                 dim=-2,
             ),
+            persistent=False,
         )
 
     def forward(
