@@ -38,6 +38,5 @@ class SwiGLU(nn.Module):
     def forward(
         self, x: Float[Tensor, "... d_model"]
     ) -> Float[Tensor, "... d_model"]:
-        "Returns W₂(SiLU(W₁x)⊙W₃), formula 7 in the assignment."
-        assert x.shape[-1] == self.d_model
+        "Returns W₂(SiLU(W₁x)⊙W₃x), formula 7 in the assignment."
         return self.w2(silu(self.w1(x)) * self.w3(x))
