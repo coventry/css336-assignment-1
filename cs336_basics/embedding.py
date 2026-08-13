@@ -29,7 +29,7 @@ class Embedding(nn.Module):
     ):
         super().__init__()
         if num_embeddings <= 0:
-            err = f"num_embeddings must be postive, got {num_embeddings}"
+            err = f"num_embeddings must be positive, got {num_embeddings}"
             raise ValueError(err)
         if embedding_dim <= 0:
             err = f"embedding_dim must be positive, got {embedding_dim}"
