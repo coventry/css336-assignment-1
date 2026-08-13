@@ -19,6 +19,8 @@ class RMSNorm(nn.Module):
         dtype: torch.dtype | None = None,
     ):
         super().__init__()
+        assert d_model > 0, "hidden dim must be positive"
+        assert eps > 0, "eps must be positive"
         self.d_model = d_model
         self.eps = eps
         gain = torch.ones(d_model, device=device, dtype=dtype)
@@ -28,7 +30,7 @@ class RMSNorm(nn.Module):
         self, x: Float[Tensor, "*batch d_model"]
     ) -> Float[Tensor, "*batch d_model"]:
         in_dtype = x.dtype
-        x = x.to(torch.float32)  # Upcast to avoid oveflow from squaring.
+        x = x.to(torch.float32)  # Upcast to avoid overflow from squaring.
         length_sq = einx.dot(  # pyright: ignore[reportPrivateImportUsage]
             "... d_model, ... d_model -> ...", x, x, d_model=self.d_model
         )
