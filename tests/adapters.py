@@ -21,6 +21,7 @@ from cs336_basics.scaled_dot_product_attention import (
     scaled_dot_product_attention,
 )
 from cs336_basics.multihead_self_attention import MultiHeadSelfAttention
+from cs336_basics.transformer_block import TransformerBlock
 
 
 def run_linear(
@@ -65,7 +66,7 @@ def run_embedding(
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
     e = Embedding(vocab_size, d_model, weights.device, weights.dtype)
-    e.load_state_dict({f"weight": weights})
+    e.load_state_dict({"weight": weights})
     return e(token_ids)
 
 
@@ -331,7 +332,30 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    t = TransformerBlock(
+        d_model,
+        num_heads,
+        d_ff,
+        max_seq_len,
+        theta,
+        device=in_features.device,
+        dtype=in_features.dtype,
+    )
+    attn_projections = torch.concat(
+        tuple(weights.get(f"attn.{p}_proj.weight", Tensor()) for p in "qkv"),
+        dim=0,
+    )
+    t.load_state_dict(
+        {
+            "attn.attn_projections.weight": attn_projections,
+            "attn.out_projection.weight": weights["attn.output_proj.weight"],
+            "ln1.gain": weights["ln1.weight"],
+            "ln2.gain": weights["ln2.weight"],
+            **weights,
+        },
+        strict=False,
+    )
+    return t(in_features)
 
 
 def run_transformer_lm(
