@@ -34,7 +34,7 @@ class TransformerLM(nn.Module):
         self.token_embeddings = Embedding(
             vocab_size, d_model, device=device, dtype=dtype
         )
-        self.layers = nn.ParameterList(  # num_layers transformer blocks
+        self.layers = nn.ModuleList(  # num_layers transformer blocks
             TransformerBlock(
                 d_model,
                 num_heads,
