@@ -43,8 +43,8 @@ class Embedding(nn.Module):
         self.weight = nn.Parameter(embeddings)
 
     def forward(
-        self, token_ids: Integer[Tensor, "*batch token_ids"]
-    ) -> Float[Tensor, "*batch embeddings"]:
+        self, token_ids: Integer[Tensor, "*batch"]
+    ) -> Float[Tensor, "*batch embedding_dim"]:
         """Return the embeddings for the given token_ids"""
         return einx.get_at(  # pyright: ignore[reportPrivateImportUsage]
             "[num_embeddings] embedding_dim, ...  -> ... embedding_dim",
