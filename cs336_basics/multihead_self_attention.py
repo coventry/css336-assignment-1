@@ -1,0 +1,87 @@
+"""Implementation of MultiHeadSelfAttention.
+
+Response to problem `multi_head_self_attention` of Assignment 1.
+"""
+
+import einx
+
+import torch
+from torch import Tensor, nn, device, dtype
+
+from jaxtyping import Float, Integer
+
+from cs336_basics.linear import Linear
+from cs336_basics.rope import RoPE
+from cs336_basics.scaled_dot_product_attention import (
+    scaled_dot_product_attention,
+)
+
+
+class MultiHeadSelfAttention(nn.Module):
+
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        max_seq_len: int | None = None,
+        theta: float | None = None,
+        device: device | None = None,
+        dtype: dtype | None = None,
+    ):
+        super().__init__()
+        assert min(d_model, num_heads) > 0, "args must be positive."
+        assert theta is None or theta > 0, "args must be positive."
+        assert d_model % num_heads == 0, f"{num_heads} ∤ {d_model}"
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+        # Hidden-dim -> vertically stacked W_Q, W_K, W_V projections
+        self.attn_projections = Linear(d_model, 3 * d_model)
+        self.out_projection = Linear(d_model, d_model)
+        if max_seq_len is not None:
+            assert theta is not None
+            self.rope = RoPE(
+                theta, self.d_k, max_seq_len, device=device, dtype=dtype
+            )
+        else:
+            self.rope = None
+
+    def forward(
+        self,
+        x: Float[Tensor, "*sequence_length d_model"],
+        token_positions: Integer[Tensor, "*sequence_length"] | None = None,
+    ) -> Float[Tensor, " *sequence_length d_model"]:
+        assert self.d_k * self.num_heads == self.d_model  # Use in next cmd
+        # Compute W_Qx, W_Kx, W_Vx (Definitions below (14))
+        q, k, v = einx.id(  # pyright: ignore[reportPrivateImportUsage]
+            "... (num_proj num_heads d_k) -> num_proj num_heads ... d_k",
+            self.attn_projections(x),  # Stacked q/k/v
+            num_proj=3,  # I.e., q/k/v end up stacked on first tensor ordinate
+            num_heads=self.num_heads,  # I.e., heads stacked on second ordinate
+            d_k=self.d_k,  # per-head vectors in last ordinate
+        )
+        sequence_length = x.shape[-2]
+        if self.rope is not None:  # Compute rope embeddings
+            if token_positions is None:
+                token_positions = torch.arange(sequence_length, device=x.device)
+            else:
+                assert torch.equal(
+                    token_positions, token_positions.sort(dim=-1)[0]
+                ), "Token positions must be sorted."
+            q = self.rope(q, token_positions)
+            k = self.rope(k, token_positions)
+        # Since token positions are sorted, the lower-triangular mask is causal
+        mask = torch.tril(  # Causal mask
+            torch.empty(
+                sequence_length, sequence_length, dtype=torch.bool
+            ).fill_(True)
+        )
+        # Restack per-head outputs into last ordinate
+        attention = einx.id(  # pyright: ignore[reportPrivateImportUsage]
+            "num_heads ... d_v -> ... (num_heads d_v)",  # Equ. (12)
+            scaled_dot_product_attention(q, k, v, mask),  # Equ. (13)
+            num_heads=self.num_heads,
+            d_v=self.d_k,
+        )
+        # Equ. (14)
+        return self.out_projection(attention)

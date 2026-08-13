@@ -67,19 +67,28 @@ class RoPE(nn.Module):
         if (latest := token_positions.max()) >= self.max_seq_len:
             raise ValueError(f"token position outside of max range: {latest}")
         half_d_k = self.d_k // 2
+        seqlen = token_positions.shape[-1]
+        assert inp.shape[-2] == seqlen
         qpairs = einx.id(  # pyright: ignore[reportPrivateImportUsage]
             "... seqlen (half_d_k pair) -> ... seqlen half_d_k pair",
             inp,
-            seqlen=len(token_positions),
+            seqlen=seqlen,
             half_d_k=half_d_k,
             pair=2,
         )
+        tp_sig_prefix = ""
+        if len(token_positions.shape) != 1:
+            assert token_positions.shape[0] == 1
+            assert (
+                len(token_positions.shape) == 2
+            ), f"length is {len(token_positions)}"
+            token_positions = token_positions.squeeze(dim=0)
         rotated = einx.dot(  # pyright: ignore[reportPrivateImportUsage]
             "seqlen half_d_k row [col], ... seqlen half_d_k [col] -> "
             "... seqlen half_d_k row",
             self.rotations[token_positions],
             qpairs,
-            seqlen=len(token_positions),
+            seqlen=seqlen,
             half_d_k=half_d_k,
             row=2,
             col=2,
@@ -87,7 +96,7 @@ class RoPE(nn.Module):
         return einx.id(  # pyright: ignore[reportPrivateImportUsage]
             "... seqlen half_d_k row -> ... seqlen (half_d_k row)",
             rotated,
-            seqlen=len(token_positions),
+            seqlen=seqlen,
             half_d_k=half_d_k,
             row=2,
         )

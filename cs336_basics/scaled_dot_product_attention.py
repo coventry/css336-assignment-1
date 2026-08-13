@@ -32,10 +32,13 @@ def scaled_dot_product_attention(
         d_k=d_k,
     )
     if mask is not None:
+        mask_sig = "queries keys"
+        if len(mask.shape) == len(unscaled_logits.shape):
+            mask_sig = "... " + mask_sig
         # Force 0's in softmax where mask==False. (exp(-inf)=0)
         unscaled_logits = einx.where(  # pyright: ignore[reportPrivateImportUsage]
-            "... queries keys, ,... queries keys -> ... queries keys",
-            # ----------------^-------------- Empty argument
+            f"{mask_sig}, ,... queries keys -> ... queries keys",
+            # ----------------^-------------- Note empty argument
             ~mask,
             -inf,
             unscaled_logits,
