@@ -41,4 +41,4 @@ class RMSNorm(nn.Module):
         )
         return einx.divide(  # pyright: ignore[reportPrivateImportUsage]
             "... d_model, ... -> ... d_model", gained, rms, d_model=self.d_model
-        )
+        ).to(in_dtype)
