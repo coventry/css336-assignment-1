@@ -52,9 +52,9 @@ class MultiHeadSelfAttention(nn.Module):
 
     def forward(
         self,
-        x: Float[Tensor, "*sequence_length d_model"],
-        token_positions: Integer[Tensor, "*sequence_length"] | None = None,
-    ) -> Float[Tensor, " *sequence_length d_model"]:
+        x: Float[Tensor, "*batch sequence_length d_model"],
+        token_positions: Integer[Tensor, "... sequence_length"] | None = None,
+    ) -> Float[Tensor, " *batch sequence_length d_model"]:
         assert self.d_k * self.num_heads == self.d_model  # Use in next cmd
         # Compute W_Qx, W_Kx, W_Vx (Definitions below (14))
         q, k, v = einx.id(  # pyright: ignore[reportPrivateImportUsage]

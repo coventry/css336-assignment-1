@@ -15,11 +15,11 @@ from cs336_basics.softmax import softmax
 
 
 def scaled_dot_product_attention(
-    Q: Float[Tensor, "*queries d_k"],
-    K: Float[Tensor, "*keys d_k"],
-    V: Float[Tensor, "*keys d_v"],
-    mask: Bool[Tensor, "*queries keys"] | None = None,
-) -> Float[Tensor, "*queries d_v"]:
+    Q: Float[Tensor, "*batch queries d_k"],
+    K: Float[Tensor, "*batch keys d_k"],
+    V: Float[Tensor, "*batch keys d_v"],
+    mask: Bool[Tensor, "... queries keys"] | None = None,
+) -> Float[Tensor, "*batch queries d_v"]:
     d_k = Q.shape[-1]
     queries = Q.shape[-2]
     keys = K.shape[-2]

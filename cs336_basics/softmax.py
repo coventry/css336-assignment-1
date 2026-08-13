@@ -9,8 +9,8 @@ from jaxtyping import Float
 
 
 def softmax(
-    in_features: Float[Tensor, " ..."], dim: int
-) -> Float[Tensor, " ..."]:
+    in_features: Float[Tensor, "..."], dim: int
+) -> Float[Tensor, "..."]:
     "Return softmax value from eq. (10)"
     # keepdim=True to broadcast the max-contracted dimension over in_features
     normalized = in_features - in_features.max(dim=dim, keepdim=True)[0]
