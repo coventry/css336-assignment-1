@@ -22,6 +22,7 @@ from cs336_basics.scaled_dot_product_attention import (
 )
 from cs336_basics.multihead_self_attention import MultiHeadSelfAttention
 from cs336_basics.transformer_block import TransformerBlock
+from cs336_basics.transformer_lm import TransformerLM
 
 
 def run_linear(
@@ -437,7 +438,36 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    t = TransformerLM(
+        vocab_size,
+        context_length,
+        d_model,
+        num_layers,
+        num_heads,
+        d_ff,
+        rope_theta,
+    )
+    # Copy in the state from `weights`
+    new_weights = weights.copy()
+    for layer in range(num_layers):
+        layer_name = f"layers.{layer}"
+        attn_name = f"{layer_name}.attn"
+        new_weights[f"{attn_name}.attn_projections.weight"] = torch.concat(
+            tuple(weights[f"{attn_name}.{p}_proj.weight"] for p in "qkv"),
+            dim=0,
+        )
+        new_weights[f"{attn_name}.out_projection.weight"] = weights[
+            f"{attn_name}.output_proj.weight"
+        ]
+        for i in [1, 2]:
+            norm_name = f"{layer_name}.ln{i}"
+            new_weights[f"{norm_name}.gain"] = weights[f"{norm_name}.weight"]
+    new_weights["ln_final.gain"] = weights["ln_final.weight"]
+    my_keys = set(t.state_dict().keys())
+    their_keys = set(new_weights.keys())
+    assert not (my_keys - their_keys)
+    t.load_state_dict(new_weights, strict=False)
+    return t(in_indices)
 
 
 def run_rmsnorm(
