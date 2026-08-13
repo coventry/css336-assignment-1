@@ -77,17 +77,13 @@ class RoPE(nn.Module):
             half_d_k=half_d_k,
             pair=2,
         )
-        tp_sig_prefix = ""
-        if len(token_positions.shape) != 1:
-            assert token_positions.shape[0] == 1
-            assert (
-                len(token_positions.shape) == 2
-            ), f"length is {len(token_positions)}"
-            token_positions = token_positions.squeeze(dim=0)
+        # Broadcast token_positions over batching in inp, if necessary
+        token_positions = token_positions.broadcast_to(inp.shape[:-1])
+        rotations = self.rotations[token_positions]
         rotated = einx.dot(  # pyright: ignore[reportPrivateImportUsage]
-            "seqlen half_d_k row [col], ... seqlen half_d_k [col] -> "
+            "... seqlen half_d_k row [col], ... seqlen half_d_k [col] -> "
             "... seqlen half_d_k row",
-            self.rotations[token_positions],
+            rotations,
             qpairs,
             seqlen=seqlen,
             half_d_k=half_d_k,
