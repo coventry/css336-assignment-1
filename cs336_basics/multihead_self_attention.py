@@ -36,8 +36,12 @@ class MultiHeadSelfAttention(nn.Module):
         self.num_heads = num_heads
         self.d_k = d_model // num_heads
         # Hidden-dim -> vertically stacked W_Q, W_K, W_V projections
-        self.attn_projections = Linear(d_model, 3 * d_model)
-        self.out_projection = Linear(d_model, d_model)
+        self.attn_projections = Linear(
+            d_model, 3 * d_model, device=device, dtype=dtype
+        )
+        self.out_projection = Linear(
+            d_model, d_model, device=device, dtype=dtype
+        )
         if max_seq_len is not None:
             assert theta is not None
             self.rope = RoPE(
@@ -73,7 +77,10 @@ class MultiHeadSelfAttention(nn.Module):
         # Since token positions are sorted, the lower-triangular mask is causal
         mask = torch.tril(  # Causal mask
             torch.empty(
-                sequence_length, sequence_length, dtype=torch.bool
+                sequence_length,
+                sequence_length,
+                device=x.device,
+                dtype=torch.bool,
             ).fill_(True)
         )
         # Restack per-head outputs into last ordinate
