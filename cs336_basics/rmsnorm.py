@@ -25,8 +25,10 @@ class RMSNorm(nn.Module):
         dtype: torch.dtype | None = None,
     ):
         super().__init__()
-        assert d_model > 0, "hidden dim must be positive"
-        assert eps > 0, "eps must be positive"
+        if d_model <= 0:
+            raise ValueError(f"hidden dim must be positive, got {d_model}")
+        if eps <= 0:
+            raise ValueError(f"eps must be positive, got {eps}")
         self.d_model = d_model
         self.eps = eps
         gain = torch.ones(d_model, device=device, dtype=dtype)

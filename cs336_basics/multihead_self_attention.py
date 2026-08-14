@@ -40,21 +40,33 @@ class MultiHeadSelfAttention(nn.Module):
         dtype: dtype | None = None,
     ):
         super().__init__()
-        assert min(d_model, num_heads) > 0, "args must be positive."
-        assert theta is None or theta > 0, "args must be positive."
+        if d_model <= 0:
+            raise ValueError(f"d_model must be positive, got {d_model}")
+        if num_heads <= 0:
+            raise ValueError(f"num_heads must be positive, got {num_heads}")
+        if theta is not None and theta <= 0:
+            raise ValueError(f"theta must be positive, got {theta}")
         if max_seq_len is None or theta is None:
-            assert (max_seq_len, theta) == (
+            if (max_seq_len, theta) != (
                 None,
                 None,
-            ), "Either set both max_seq_len & theta, or neither"
-        assert d_model % num_heads == 0, f"{num_heads} ∤ {d_model}"
+            ):
+                err = "Either set both max_seq_len & theta, or neither"
+                raise ValueError(err)
+        if d_model % num_heads != 0:
+            raise ValueError(
+                "num_heads must be a divisor of d_model, but"
+                f"{num_heads} ∤ {d_model}"
+            )
         self.d_model = d_model
         self.num_heads = num_heads
         self.d_k = d_model // num_heads
         if theta is not None:
-            assert (
-                self.d_k % 2 == 0
-            ), "To use RoPE, attention-head internal dimension must be even"
+            if self.d_k % 2 != 0:
+                raise ValueError(
+                    "To use RoPE, attention-head internal dimension must be "
+                    f"even, got {self.d_k}"
+                )
         # Hidden-dim -> vertically stacked W_Q, W_K, W_V projections.
         # Assignment suggests this arrangement so that only a single matmul
         # occurs.
@@ -75,7 +87,6 @@ class MultiHeadSelfAttention(nn.Module):
             d_model, d_model, device=device, dtype=dtype
         )
         if max_seq_len is not None:
-            assert theta is not None
             self.rope = RoPE(
                 theta, self.d_k, max_seq_len, device=device, dtype=dtype
             )
@@ -96,7 +107,6 @@ class MultiHeadSelfAttention(nn.Module):
         token_positions must be strictly increasing.
 
         """
-        assert self.d_k * self.num_heads == self.d_model  # Use in next cmd
         # Compute W_Qx, W_Kx, W_Vx (Definitions below (14))
         q, k, v = einx.id(  # pyright: ignore[reportPrivateImportUsage]
             "... (num_proj num_heads d_k) -> num_proj num_heads ... d_k",
@@ -110,9 +120,11 @@ class MultiHeadSelfAttention(nn.Module):
             if token_positions is None:
                 token_positions = torch.arange(sequence_length, device=x.device)
             else:
-                assert torch.all(  # token_positions should strictly increase
-                    token_positions[..., 1:] > token_positions[..., :-1]
-                ), "Token positions must be sorted."
+                # token_positions should strictly increase
+                if torch.any(
+                    token_positions[..., 1:] <= token_positions[..., :-1]
+                ):
+                    raise ValueError("Token positions must strictly increase.")
             q = self.rope(q, token_positions)
             k = self.rope(k, token_positions)
         # Since token positions are sorted, the lower-triangular mask is causal
