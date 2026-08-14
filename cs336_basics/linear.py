@@ -29,9 +29,10 @@ class Linear(nn.Module):
         self,
         in_features: int,
         out_features: int,
-        init_variance_scale: float = 1,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        *,
+        init_variance_scale: float = 1,
     ):
         super().__init__()
         if in_features < 1:
