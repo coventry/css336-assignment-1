@@ -97,7 +97,7 @@ class MultiHeadSelfAttention(nn.Module):
         self,
         x: Float[Tensor, "*batch sequence_length d_model"],
         token_positions: Integer[Tensor, "... sequence_length"] | None = None,
-    ) -> Float[Tensor, " *batch sequence_length d_model"]:
+    ) -> Float[Tensor, "*batch sequence_length d_model"]:
         """Return equ. (14) from assignment.
 
         Args:
