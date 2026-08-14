@@ -20,6 +20,7 @@ class Linear(nn.Module):
     Args:
         in_features: Expected size of input vectors
         out_features: Size of output vectors
+        init_variance_scale: Optionally change σ² by this factor
 
     Both arguments must be positive.
     """
@@ -28,6 +29,7 @@ class Linear(nn.Module):
         self,
         in_features: int,
         out_features: int,
+        init_variance_scale: float = 1,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -37,9 +39,14 @@ class Linear(nn.Module):
         if out_features < 1:
             err = f"out_features must be positive, got {out_features}"
             raise ValueError(err)
+        if init_variance_scale <= 0:
+            raise ValueError(
+                "init_variance_scale must be positive, got "
+                f"{init_variance_scale}"
+            )
         self.in_features = in_features
         self.out_features = out_features
-        sigma = sqrt(2 / (in_features + out_features))
+        sigma = sqrt(2 * init_variance_scale / (in_features + out_features))
         bound = 3 * sigma
         init_weight = torch.empty(
             out_features, in_features, device=device, dtype=dtype

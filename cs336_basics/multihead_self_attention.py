@@ -44,9 +44,21 @@ class MultiHeadSelfAttention(nn.Module):
         self.d_model = d_model
         self.num_heads = num_heads
         self.d_k = d_model // num_heads
-        # Hidden-dim -> vertically stacked W_Q, W_K, W_V projections
+        # Hidden-dim -> vertically stacked W_Q, W_K, W_V projections.
+        # Assignment suggests this arrangement so that only a single matmul
+        # occurs.
         self.attn_projections = Linear(
-            d_model, 3 * d_model, device=device, dtype=dtype
+            d_model,
+            3 * d_model,
+            device=device,
+            dtype=dtype,
+            # Linear's initialization σ² assumes it's creating a single linear
+            # function, but here we are abusing it to create three stacked
+            # linear functions. Its default σ² for a (d_model, 3*d_model)
+            # function is 1/(2*d_model) (see §3.3.1), but the required variance
+            # for the actual (d_model, d_model) components is 1/d_model.
+            # Therefore, we multiply the σ² initialization by 2 to compensate.
+            init_variance_scale=2,
         )
         self.out_projection = Linear(
             d_model, d_model, device=device, dtype=dtype
