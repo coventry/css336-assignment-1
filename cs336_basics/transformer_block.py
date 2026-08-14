@@ -15,7 +15,7 @@ from cs336_basics.rmsnorm import RMSNorm
 
 
 class TransformerBlock(nn.Module):
-    """Single-layer transformer block, as in Equ. (16) for the first half.
+    """Single-layer transformer block, as in Equ. (15) for the first half.
 
     Args:
         d_model: Hidden-dimension size
@@ -48,7 +48,7 @@ class TransformerBlock(nn.Module):
         self,
         x: Float[Tensor, "batch sequence_length d_model"],
     ) -> Float[Tensor, "batch sequence_length d_model"]:
-        """Compute (16) and the rest of Fig. 2 in the assignment.
+        """Compute (15) and the rest of Fig. 2 in the assignment.
 
         Args:
             x: Input from embedding/prior block
