@@ -47,7 +47,7 @@ def scaled_dot_product_attention(
     if mask is not None:
         assert mask.any(  # any fully masked query-row ⇒ NaN's during softmax
             dim=-1
-        ).all(dim=-1), "mask must allow at least one key per query."
+        ).all(), "mask must allow at least one key per query."
         # Broadcast mask over any batches in the input
         mask = mask.broadcast_to(unscaled_logits.shape)
         # Force 0's in softmax where mask==False. (exp(-inf)=0). mask(QKᵗ)
