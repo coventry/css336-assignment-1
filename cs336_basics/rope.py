@@ -31,6 +31,12 @@ class RoPE(nn.Module):
         dtype: torch.dtype | None = None,
     ):
         super().__init__()
+        if theta <= 0:
+            raise ValueError(f"theta must be positive, got {theta}")
+        if d_k <= 0 or d_k % 2 != 0:
+            raise ValueError(f"d_k must be positive & even, got {d_k}")
+        if max_seq_len <= 0:
+            raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
         self.theta = theta
         self.d_k = d_k
         self.max_seq_len = max_seq_len
