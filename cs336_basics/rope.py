@@ -48,11 +48,14 @@ class RoPE(nn.Module):
                 ]
                 for i in range(max_seq_len)
             ],
-            dtype=dtype,
+            dtype=torch.float64,
             device=device,
         )
         cosines = torch.cos(thetas)
         sines = torch.sin(thetas)
+        if dtype is not None:
+            cosines = cosines.to(dtype)
+            sines = sines.to(dtype)
         self.register_buffer(
             "rotations",  # rotations[i,k] = 2⨉2 θᵢₖ rotation matrix
             torch.stack(
