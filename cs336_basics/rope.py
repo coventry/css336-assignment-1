@@ -95,7 +95,8 @@ class RoPE(nn.Module):
             pair=2,
         )
         rotations = self.rotations[token_positions]
-        # Broadcast token_positions over batching in inp, if necessary
+        # Broadcast token_positions over any additional leading input
+        # dimensions, such as batching/attention heads
         #
         # While it would be cleaner to broadcast token_positions, that leads to
         # copying all the rotation matrices during indexing.
