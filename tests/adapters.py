@@ -446,6 +446,8 @@ def run_transformer_lm(
         num_heads,
         d_ff,
         rope_theta,
+        device=in_indices.device,
+        dtype=in_indices.dtype,
     )
     # Copy in the state from `weights`
     new_weights = weights.copy()
