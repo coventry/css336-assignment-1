@@ -46,8 +46,8 @@ class TransformerBlock(nn.Module):
 
     def forward(
         self,
-        x: Float[Tensor, "batch sequence_length d_model"],
-    ) -> Float[Tensor, "batch sequence_length d_model"]:
+        x: Float[Tensor, "*batch sequence_length d_model"],
+    ) -> Float[Tensor, "*batch sequence_length d_model"]:
         """Compute (15) and the rest of Fig. 2 in the assignment.
 
         Args:
