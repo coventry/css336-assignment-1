@@ -73,9 +73,17 @@ class RoPE(nn.Module):
         """Rotate pairs in `inp` by rotations implied by token_positions."""
         if (latest := token_positions.max()) >= self.max_seq_len:
             raise ValueError(f"token position outside of max range: {latest}")
+        if (earliest := token_positions.min()) < 0:
+            raise ValueError(
+                f"token_positions must be nonnegative, got {earliest}"
+            )
         half_d_k = self.d_k // 2
         seqlen = token_positions.shape[-1]
-        assert inp.shape[-2] == seqlen
+        if (inp_seqlen := inp.shape[-2]) != seqlen:
+            raise ValueError(
+                f"Last dim of token_positions ({seqlen}) and second-last of "
+                f"inp ({inp_seqlen}) must be equal."
+            )
         qpairs = einx.id(  # pyright: ignore[reportPrivateImportUsage]
             "... seqlen (half_d_k pair) -> ... seqlen half_d_k pair",
             inp,
