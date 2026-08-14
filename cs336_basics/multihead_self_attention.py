@@ -26,6 +26,8 @@ class MultiHeadSelfAttention(nn.Module):
         max_seq_len: longest sequence over which attention will be computed
         theta: base rotation angle for rope
 
+    If either of max_seq_len or theta is set, the other must be set, too.
+
     """
 
     def __init__(
@@ -40,10 +42,19 @@ class MultiHeadSelfAttention(nn.Module):
         super().__init__()
         assert min(d_model, num_heads) > 0, "args must be positive."
         assert theta is None or theta > 0, "args must be positive."
+        if max_seq_len is None or theta is None:
+            assert (max_seq_len, theta) == (
+                None,
+                None,
+            ), "Either set both max_seq_len & theta, or neither"
         assert d_model % num_heads == 0, f"{num_heads} ∤ {d_model}"
         self.d_model = d_model
         self.num_heads = num_heads
         self.d_k = d_model // num_heads
+        if theta is not None:
+            assert (
+                self.d_k % 2 == 0
+            ), "To use RoPE, attention-head internal dimension must be even"
         # Hidden-dim -> vertically stacked W_Q, W_K, W_V projections.
         # Assignment suggests this arrangement so that only a single matmul
         # occurs.
@@ -76,7 +87,15 @@ class MultiHeadSelfAttention(nn.Module):
         x: Float[Tensor, "*batch sequence_length d_model"],
         token_positions: Integer[Tensor, "... sequence_length"] | None = None,
     ) -> Float[Tensor, " *batch sequence_length d_model"]:
-        """Return equ. (14) from assignment."""
+        """Return equ. (14) from assignment.
+
+        Args:
+            x: hidden-dimension input to self-attention
+            token_positions: indices in the sequence from which the x's come.
+
+        token_positions must be strictly increasing.
+
+        """
         assert self.d_k * self.num_heads == self.d_model  # Use in next cmd
         # Compute W_Qx, W_Kx, W_Vx (Definitions below (14))
         q, k, v = einx.id(  # pyright: ignore[reportPrivateImportUsage]
@@ -91,8 +110,8 @@ class MultiHeadSelfAttention(nn.Module):
             if token_positions is None:
                 token_positions = torch.arange(sequence_length, device=x.device)
             else:
-                assert torch.equal(
-                    token_positions, token_positions.sort(dim=-1)[0]
+                assert torch.all(  # token_positions should strictly increase
+                    token_positions[..., 1:] > token_positions[..., :-1]
                 ), "Token positions must be sorted."
             q = self.rope(q, token_positions)
             k = self.rope(k, token_positions)
