@@ -48,6 +48,8 @@ class RoPE(nn.Module):
                 ]
                 for i in range(max_seq_len)
             ],
+            # Compute initially in 64-bit representation, to avoid rounding
+            # errors.
             dtype=torch.float64,
             device=device,
         )
