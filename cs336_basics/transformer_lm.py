@@ -1,6 +1,6 @@
-"""Implementation of TransformerBlock.
+"""Implementation of TransformerLM.
 
-Response to problem `transformer_block` of Assignment 1.
+Response to problem `transformer_lm` of Assignment 1.
 """
 
 import einx
