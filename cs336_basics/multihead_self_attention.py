@@ -68,8 +68,8 @@ class MultiHeadSelfAttention(nn.Module):
                     f"even, got {self.d_k}"
                 )
         # Hidden-dim -> vertically stacked W_Q, W_K, W_V projections.
-        # Assignment suggests this arrangement so that only a single matmul
-        # occurs.
+        # Assignment suggests this arrangement as a stretch goal so that only a
+        # single matmul occurs.
         self.attn_projections = Linear(
             d_model,
             3 * d_model,
