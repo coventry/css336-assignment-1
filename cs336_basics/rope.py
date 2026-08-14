@@ -77,9 +77,12 @@ class RoPE(nn.Module):
             half_d_k=half_d_k,
             pair=2,
         )
-        # Broadcast token_positions over batching in inp, if necessary
-        token_positions = token_positions.broadcast_to(inp.shape[:-1])
         rotations = self.rotations[token_positions]
+        # Broadcast token_positions over batching in inp, if necessary
+        #
+        # While it would be cleaner to broadcast token_positions, that leads to
+        # copying all the rotation matrices during indexing.
+        rotations = rotations.broadcast_to((*qpairs.shape[:-1], 2, 2))
         rotated = einx.dot(  # pyright: ignore[reportPrivateImportUsage]
             "... seqlen half_d_k row [col], ... seqlen half_d_k [col] -> "
             "... seqlen half_d_k row",
