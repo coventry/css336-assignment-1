@@ -61,9 +61,9 @@ class RoPE(nn.Module):
 
     def forward(
         self,
-        inp: Float[Tensor, "*sequence_length d_k"],
-        token_positions: Integer[Tensor, "*sequence_length"],
-    ) -> Float[Tensor, "*sequence_length d_k"]:
+        inp: Float[Tensor, "*batch sequence_length d_k"],
+        token_positions: Integer[Tensor, "... sequence_length"],
+    ) -> Float[Tensor, "*batch sequence_length d_k"]:
         """Rotate pairs in `inp` by rotations implied by token_positions."""
         if (latest := token_positions.max()) >= self.max_seq_len:
             raise ValueError(f"token position outside of max range: {latest}")
