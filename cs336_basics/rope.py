@@ -64,7 +64,7 @@ class RoPE(nn.Module):
         inp: Float[Tensor, "*sequence_length d_k"],
         token_positions: Integer[Tensor, "*sequence_length"],
     ) -> Float[Tensor, "*sequence_length d_k"]:
-        """Multiply `inp` by self.params, on the left."""
+        """Rotate pairs in `inp` by rotations implied by token_positions."""
         if (latest := token_positions.max()) >= self.max_seq_len:
             raise ValueError(f"token position outside of max range: {latest}")
         half_d_k = self.d_k // 2

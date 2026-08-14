@@ -17,6 +17,17 @@ from cs336_basics.transformer_block import TransformerBlock
 
 
 class TransformerLM(nn.Module):
+    """Full transformer language model
+
+    Args:
+        vocab_size: Number of tokens in tokenizer vocabulary
+        context_length: How far to look back in self-attention
+        d_model: Hidden-dimension size
+        num_layers: Number of transformer layers
+        num_heads: Number of self-attention heads
+        d_ff: Dimension of hidden layer in feedforward network
+        rope_theta: Base angle for RoPE
+    """
 
     def __init__(
         self,
@@ -52,6 +63,14 @@ class TransformerLM(nn.Module):
     def forward(
         self, in_indices: Integer[Tensor, "batch_size sequence_length"]
     ) -> Float[Tensor, "batch_size sequence_length vocab_size"]:
+        """Compute transformer outputs
+
+        Args:
+            in_indices: Token ids of sequences to process
+
+        Returns:
+            Logits over vocab tokens for each sequence position
+        """
         x = self.token_embeddings(in_indices)
         for b in self.layers:
             x = b(x)

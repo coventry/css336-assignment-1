@@ -10,6 +10,12 @@ from jaxtyping import Float
 
 
 class RMSNorm(nn.Module):
+    """RMS norm per equation (4) from the assignment
+
+    Args:
+        d_model: Hidden-dimension size
+        eps: Small summand for numerical stability of denominator
+    """
 
     def __init__(
         self,
@@ -29,6 +35,7 @@ class RMSNorm(nn.Module):
     def forward(
         self, x: Float[Tensor, "*batch d_model"]
     ) -> Float[Tensor, "*batch d_model"]:
+        "Returns [gᵢaᵢ/RMS(a)]ᵢ over last dim, formula (4) in the assignment"
         in_dtype = x.dtype
         x = x.to(torch.float32)  # Upcast to avoid overflow from squaring.
         length_sq = einx.dot(  # pyright: ignore[reportPrivateImportUsage]

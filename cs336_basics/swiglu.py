@@ -12,10 +12,17 @@ from cs336_basics.linear import Linear
 
 
 def silu(x: Float[Tensor, "*args"]) -> Float[Tensor, "*args"]:
+    "Return SiLU(x), as in equ. 5 of the assignment."
     return x * torch.sigmoid(x)
 
 
 class SwiGLU(nn.Module):
+    """Feedforward module with SwiGLU activation
+
+    Args:
+        d_model: Hidden-dimension size
+        d_ff: Dimension size for internal layer of feedforward network.
+    """
 
     def __init__(
         self,

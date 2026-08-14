@@ -15,6 +15,16 @@ from cs336_basics.rmsnorm import RMSNorm
 
 
 class TransformerBlock(nn.Module):
+    """Single-layer transformer block, as in Equ. (16) for the first half.
+
+    Args:
+        d_model: Hidden-dimension size
+        num_heads: Number of heads in MHSA
+        d_ff: Size of internal dimension in feedforward layer.
+        max_seq_len: Attn will be computed over sequences at most this long
+        theta: base rotation angle for rope
+
+    """
 
     def __init__(
         self,
@@ -38,5 +48,14 @@ class TransformerBlock(nn.Module):
         self,
         x: Float[Tensor, "batch sequence_length d_model"],
     ) -> Float[Tensor, "batch sequence_length d_model"]:
+        """Compute (16) and the rest of Fig. 2 in the assignment.
+
+        Args:
+            x: Input from embedding/prior block
+
+        Returns:
+            Output from self-attention and FFN layers.
+
+        """
         y = x + self.attn(self.ln1(x))
         return y + self.ffn(self.ln2(y))

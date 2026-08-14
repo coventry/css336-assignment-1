@@ -18,6 +18,15 @@ from cs336_basics.scaled_dot_product_attention import (
 
 
 class MultiHeadSelfAttention(nn.Module):
+    """Computes Multi-Head Self Attention according equ.'s 12-14 in assignment
+
+    Args:
+        d_model: Hidden-dimension size
+        num_heads: Number of heads in multi-head
+        max_seq_len: longest sequence over which attention will be computed
+        theta: base rotation angle for rope
+
+    """
 
     def __init__(
         self,
@@ -55,6 +64,7 @@ class MultiHeadSelfAttention(nn.Module):
         x: Float[Tensor, "*batch sequence_length d_model"],
         token_positions: Integer[Tensor, "... sequence_length"] | None = None,
     ) -> Float[Tensor, " *batch sequence_length d_model"]:
+        """Return equ. (14) from assignment."""
         assert self.d_k * self.num_heads == self.d_model  # Use in next cmd
         # Compute W_Qx, W_Kx, W_Vx (Definitions below (14))
         q, k, v = einx.id(  # pyright: ignore[reportPrivateImportUsage]
@@ -91,4 +101,4 @@ class MultiHeadSelfAttention(nn.Module):
             d_v=self.d_k,
         )
         # Equ. (14)
-        return self.out_projection(attention)
+        return self.out_projection(attention)  # Equ. (14)
