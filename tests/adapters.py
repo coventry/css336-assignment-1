@@ -447,7 +447,7 @@ def run_transformer_lm(
         d_ff,
         rope_theta,
         device=in_indices.device,
-        dtype=in_indices.dtype,
+        dtype=weights["token_embeddings.weight"].dtype,
     )
     # Copy in the state from `weights`
     new_weights = weights.copy()
