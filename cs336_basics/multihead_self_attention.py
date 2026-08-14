@@ -6,7 +6,7 @@ Response to problem `multi_head_self_attention` of Assignment 1.
 import einx
 
 import torch
-from torch import Tensor, nn, device, dtype
+from torch import nn, device, dtype
 
 from jaxtyping import Float, Integer
 

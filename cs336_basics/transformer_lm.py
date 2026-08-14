@@ -3,9 +3,6 @@
 Response to problem `transformer_lm` of Assignment 1.
 """
 
-import einx
-
-import torch
 from torch import Tensor, nn, device, dtype
 
 from jaxtyping import Float, Integer
