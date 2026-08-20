@@ -108,3 +108,10 @@ d_ff = round(d_ff / 64) * 64  # Round to nearest multiple of 64
 print(num_flops(50_257, 1024, 36, 1280, d_ff))
 
 print(num_flops(50_257, 16384, 48, 1_600, 4_288))  # GPT-2 XL
+
+def adam_w_memory(v, S , L, d, h):
+    param_memory = 32*L*d*(1+6*d) + 16*d + 32*d*v 
+    activation_memory_per_batch = (224/3)*L*S*d + 8*L*h*S**2 + 4*S*d + 8*S*v + 4*S
+    return (param_memory, activation_memory_per_batch)
+
+print(adam_w_memory(v=50_257, S=1_024, L=48, d = 1_600, h=25))
